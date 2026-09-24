@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cobra OS</title>
+<style>
+  :root{
+    --bg1:#0f1024; --bg2:#1b1440; --accent:#39ff9c; --accent2:#7c5cff;
+    --panel:#161329ee; --panel2:#1f1b3aee; --text:#e9e6ff; --sub:#9b93c9;
+    --taskbar:#0c0a1eee; --danger:#ff5c7c;
+  }
+  *{box-sizing:border-box; user-select:none;}
+  html,body{height:100%; margin:0; font-family:'Segoe UI',system-ui,sans-serif; overflow:hidden;}
+  body{
+    background:
+      radial-gradient(circle at 20% 20%, #2b1f5c 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, #12305c 0%, transparent 45%),
+      linear-gradient(160deg, var(--bg1), var(--bg2));
+    color:var(--text); height:100vh; width:100vw; position:relative;
+  }
+  #desktop{position:absolute; inset:0; bottom:52px; padding:16px; display:flex; flex-direction:column; flex-wrap:wrap; gap:6px;}
+  .icon{width:84px; height:92px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:6px; padding:8px 4px; border-radius:10px; cursor:pointer;}
+  .icon:hover{background:#ffffff14;}
+  .icon .ic{font-size:30px; width:48px; height:48px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--accent2),var(--accent)); border-radius:12px; box-shadow:0 4px 14px #0006;}
+  .icon span{font-size:11px; text-align:center; text-shadow:0 1px 3px #000;}
+
+  #taskbar{position:absolute; left:0; right:0; bottom:0; height:52px; background:var(--taskbar); backdrop-filter:blur(10px); display:flex; align-items:center; padding:0 10px; gap:8px; border-top:1px solid #ffffff1a; z-index:5000;}
+  #startBtn{display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,var(--accent2),var(--accent)); border:none; color:#0b0b18; font-weight:700; padding:9px 16px; border-radius:10px; cursor:pointer; font-size:14px;}
+  #taskApps{flex:1; display:flex; gap:6px; overflow-x:auto;}
+  .taskItem{background:#ffffff14; padding:7px 12px; border-radius:8px; font-size:12px; cursor:pointer; white-space:nowrap; border:1px solid #ffffff10;}
+  .taskItem.active{background:var(--accent2); color:#fff;}
+  #clock{font-size:12px; color:var(--sub); padding:0 10px; min-width:70px; text-align:right;}
+
+  #startMenu{position:absolute; left:10px; bottom:60px; width:300px; max-height:70vh; overflow-y:auto; background:var(--panel); border:1px solid #ffffff22; border-radius:14px; padding:14px; display:none; z-index:6000; box-shadow:0 20px 60px #000a;}
+  #startMenu h3{margin:2px 6px 10px; font-size:15px; background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .startItem{display:flex; align-items:center; gap:10px; padding:9px 8px; border-radius:8px; cursor:pointer; font-size:13px;}
+  .startItem:hover{background:#ffffff14;}
+  .startItem .ic2{width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,var(--accent2),var(--accent)); display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;}
+  .startEmpty{font-size:12px; color:var(--sub); padding:8px;}
+
+  .win{position:absolute; min-width:280px; min-height:220px; background:var(--panel2); border:1px solid #ffffff26; border-radius:12px; box-shadow:0 25px 60px #000a; display:flex; flex-direction:column; overflow:hidden; z-index:100;}
+  .win.maxed{border-radius:0 !important;}
+  .winbar{height:38px; background:#0000002e; display:flex; align-items:center; padding:0 10px; gap:8px; cursor:move; border-bottom:1px solid #ffffff14;}
+  .winbar .wtitle{flex:1; font-size:13px; font-weight:600; color:var(--sub); display:flex; align-items:center; gap:6px;}
+  .winbtn{width:14px; height:14px; border-radius:50%; border:none; cursor:pointer;}
+  .wclose{background:var(--danger);} .wmin{background:#ffcc4d;} .wmax{background:var(--accent);}
+  .wbody{flex:1; position:relative; overflow:auto; display:flex; flex-direction:column;}
+  canvas{display:block; background:#0a0a18; touch-action:none;}
+  .gamewrap{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:10px;}
+  .hud{display:flex; gap:14px; font-size:13px; color:var(--sub);}
+  .btnrow{display:flex; gap:8px; margin-top:4px;}
+  .gbtn{background:var(--accent2); border:none; color:#fff; padding:7px 14px; border-radius:8px; cursor:pointer; font-size:12px;}
+  .hint{font-size:11px; color:var(--sub); text-align:center;}
+
+  /* Play Store */
+  #storeWrap{flex:1; display:flex; flex-direction:column; overflow:hidden;}
+  .storeTabs{display:flex; gap:6px; padding:10px 14px 0;}
+  .storeTab{background:#ffffff10; border:none; color:var(--sub); padding:8px 14px; border-radius:8px 8px 0 0; cursor:pointer; font-size:12px; font-weight:600;}
+  .storeTab.active{background:#ffffff1e; color:var(--text);}
+  .storeNote{font-size:11px; color:var(--sub); padding:8px 14px 0;}
+  .storeList{flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px;}
+  .storeCard{display:flex; align-items:center; gap:12px; background:#ffffff0c; border:1px solid #ffffff16; border-radius:12px; padding:10px 12px;}
+  .storeCard .sIcon{width:46px; height:46px; border-radius:10px; background:linear-gradient(135deg,var(--accent2),var(--accent)); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;}
+  .storeCard .sInfo{flex:1; min-width:0;}
+  .storeCard .sName{font-size:14px; font-weight:700;}
+  .storeCard .sDesc{font-size:11px; color:var(--sub); margin-top:2px;}
+  .storeCard .sAuthor{font-size:10px; color:var(--accent); margin-top:3px;}
+  .sBtns{display:flex; gap:6px; flex-shrink:0;}
+  .sBtn{border:none; padding:7px 12px; border-radius:8px; font-size:11px; cursor:pointer; font-weight:600;}
+  .sBtn.install{background:var(--accent); color:#0b0b18;}
+  .sBtn.open{background:var(--accent2); color:#fff;}
+  .sBtn.uninstall{background:#ffffff1e; color:var(--text);}
+  .sBtn.remove{background:var(--danger); color:#fff;}
+  .publishForm{padding:12px 14px; border-top:1px solid #ffffff14; display:flex; flex-direction:column; gap:8px;}
+  .publishForm h4{margin:0 0 2px; font-size:13px;}
+  .publishForm input[type=text]{background:#00000050; border:1px solid #ffffff22; color:var(--text); padding:8px 10px; border-radius:8px; font-size:12px;}
+  .publishForm input[type=file]{font-size:11px; color:var(--sub);}
+  .publishForm button{align-self:flex-start;}
+</style>
+</head>
+<body>
+
+<div id="desktop"></div>
+
+<div id="startMenu">
+  <h3>🐍 COBRA OS</h3>
+  <div id="startList"></div>
+</div>
+
+<div id="taskbar">
+  <button id="startBtn">🐍 Start</button>
+  <div id="taskApps"></div>
+  <div id="clock"></div>
+</div>
+
+<script>
+/* ===================== BUILT-IN GAMES ===================== */
+const BUILTIN_GAMES = [
+  {id:'snake',   name:'Snake', icon:'🐍', w:460, h:520, desc:'Eat, grow, don\'t crash into yourself.'},
+  {id:'pong',    name:'Pong', icon:'🏓', w:480, h:460, desc:'Beat the CPU paddle.'},
+  {id:'breakout',name:'Breakout', icon:'🧱', w:460, h:520, desc:'Smash every brick with the ball.'},
+  {id:'tetris',  name:'Tetris', icon:'🟦', w:400, h:560, desc:'Stack falling blocks, clear lines.'},
+  {id:'flappy',  name:'Flappy Bird', icon:'🐤', w:400, h:520, desc:'Flap through the gaps.'},
+  {id:'g2048',   name:'2048', icon:'🔢', w:420, h:520, desc:'Slide and merge tiles to reach 2048.'},
+  {id:'memory',  name:'Memory Match', icon:'🃏', w:460, h:520, desc:'Find every matching pair.'},
+];
+const STORE_APP = {id:'store', name:'Play Store', icon:'🛍️', w:520, h:600};
+
+/* ===================== LOCAL STORAGE STATE ===================== */
+function loadInstalled(){ try{ return JSON.parse(localStorage.getItem('cobra_installed_v1'))||[]; }catch(e){ return []; } }
+function saveInstalled(list){ localStorage.setItem('cobra_installed_v1', JSON.stringify(list)); }
+function loadCustom(){ try{ return JSON.parse(localStorage.getItem('cobra_custom_games_v1'))||[]; }catch(e){ return []; } }
+function saveCustom(list){ localStorage.setItem('cobra_custom_games_v1', JSON.stringify(list)); }
+
+let installed = loadInstalled();       // array of app ids (builtin ids or custom_*)
+let customGames = loadCustom();        // array of {id,name,author,html,dateAdded}
+
+function isInstalled(id){ return installed.includes(id); }
+function setInstalled(id, val){
+  if(val && !installed.includes(id)) installed.push(id);
+  if(!val) installed = installed.filter(x=>x!==id);
+  saveInstalled(installed);
+  renderDesktopAndStart();
+}
+function getAppConfig(id){
+  if(id==='store') return STORE_APP;
+  const b = BUILTIN_GAMES.find(g=>g.id===id);
+  if(b) return b;
+  const c = customGames.find(g=>g.id===id);
+  if(c) return {id:c.id, name:c.name, icon:'🎮', w:460, h:520};
+  return null;
+}
+
+/* ===================== DESKTOP / START MENU RENDER ===================== */
+const desktop = document.getElementById('desktop');
+const startList = document.getElementById('startList');
+
+function renderDesktopAndStart(){
+  desktop.innerHTML = ''; startList.innerHTML = '';
+  const items = [STORE_APP, ...installed.map(getAppConfig).filter(Boolean)];
+  items.forEach(a=>{
+    const ic = document.createElement('div');
+    ic.className='icon';
+    ic.innerHTML = `<div class="ic">${a.icon}</div><span>${a.name}</span>`;
+    ic.onclick = (e)=>{ if(e.detail===2) openApp(a.id); };
+    ic.ondblclick = ()=>openApp(a.id);
+    desktop.appendChild(ic);
+
+    const si = document.createElement('div');
+    si.className='startItem';
+    si.innerHTML = `<div class="ic2">${a.icon}</div><div>${a.name}</div>`;
+    si.onclick = ()=>{ openApp(a.id); toggleStart(false); };
+    startList.appendChild(si);
+  });
+  if(installed.length===0){
+    const hint = document.createElement('div');
+    hint.className='startEmpty';
+    hint.textContent = 'Open the Play Store to install games ↑';
+    startList.appendChild(hint);
+  }
+}
+
+/* ===================== CLOCK ===================== */
+function tickClock(){
+  const d = new Date();
+  document.getElementById('clock').textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ===================== START MENU ===================== */
+const startMenu = document.getElementById('startMenu');
+function toggleStart(force){
+  const show = force!==undefined ? force : startMenu.style.display!=='block';
+  startMenu.style.display = show ? 'block' : 'none';
+}
+document.getElementById('startBtn').onclick = (e)=>{ e.stopPropagation(); toggleStart(); };
+document.body.addEventListener('click', (e)=>{
+  if(!startMenu.contains(e.target) && e.target.id!=='startBtn') toggleStart(false);
+});
+
+/* ===================== WINDOW MANAGER ===================== */
+let zTop = 100;
+const openWindows = {};
+const taskApps = document.getElementById('taskApps');
+
+function openApp(id){
+  if(openWindows[id]){ focusWin(id); if(openWindows[id].el.style.display==='none') openWindows[id].el.style.display='flex'; return; }
+  const cfg = getAppConfig(id);
+  if(!cfg) return;
+  const win = document.createElement('div');
+  win.className='win';
+  const startX = 60 + Object.keys(openWindows).length*24;
+  const startY = 40 + Object.keys(openWindows).length*20;
+  win.style.left = startX+'px'; win.style.top = startY+'px';
+  win.style.width = cfg.w+'px'; win.style.height = cfg.h+'px';
+  win.style.zIndex = ++zTop;
+  win.innerHTML = `
+    <div class="winbar">
+      <div class="wtitle">${cfg.icon} ${cfg.name}</div>
+      <button class="winbtn wmax" title="fullscreen"></button>
+      <button class="winbtn wmin" title="minimize"></button>
+      <button class="winbtn wclose" title="close"></button>
+    </div>
+    <div class="wbody" id="body-${id}"></div>
+  `;
+  document.body.appendChild(win);
+  openWindows[id] = {el:win, cleanup:null};
+
+  makeDraggable(win, win.querySelector('.winbar'));
+  win.onmousedown = ()=>focusWin(id);
+
+  win.querySelector('.wclose').onclick = ()=>closeApp(id);
+  win.querySelector('.wmin').onclick = ()=>{ win.style.display='none'; setTaskActive(id,false); };
+
+  let maxed=false, prevRect=null;
+  function toggleMax(){
+    if(!maxed){
+      prevRect = {left:win.style.left, top:win.style.top, width:win.style.width, height:win.style.height};
+      win.style.left='0px'; win.style.top='0px';
+      win.style.width='100vw'; win.style.height='calc(100vh - 52px)';
+      win.classList.add('maxed');
+      maxed=true;
+    } else {
+      win.style.left=prevRect.left; win.style.top=prevRect.top;
+      win.style.width=prevRect.width; win.style.height=prevRect.height;
+      win.classList.remove('maxed');
+      maxed=false;
+    }
+  }
+  win.querySelector('.wmax').onclick = toggleMax;
+  win.querySelector('.winbar').addEventListener('dblclick', (e)=>{
+    if(e.target.classList.contains('winbtn')) return;
+    toggleMax();
+  });
+
+  const tItem = document.createElement('div');
+  tItem.className='taskItem active';
+  tItem.id = 'task-'+id;
+  tItem.textContent = cfg.icon+' '+cfg.name;
+  tItem.onclick = ()=>{
+    if(win.style.display==='none'){ win.style.display='flex'; }
+    focusWin(id);
+  };
+  taskApps.appendChild(tItem);
+
+  const body = win.querySelector('#body-'+id);
+  const cleanup = (GAME_INIT[id] ? GAME_INIT[id](body) : initCustomGame(body, id));
+  openWindows[id].cleanup = cleanup;
+
+  focusWin(id);
+}
+
+function focusWin(id){
+  Object.keys(openWindows).forEach(k=>setTaskActive(k, k===id));
+  const w = openWindows[id];
+  if(w){ w.el.style.zIndex = ++zTop; }
+}
+function setTaskActive(id, active){
+  const t = document.getElementById('task-'+id);
+  if(t) t.classList.toggle('active', active);
+}
+function closeApp(id){
+  const w = openWindows[id];
+  if(!w) return;
+  if(w.cleanup) w.cleanup();
+  w.el.remove();
+  const t = document.getElementById('task-'+id);
+  if(t) t.remove();
+  delete openWindows[id];
+}
+
+function makeDraggable(win, handle){
+  let ox=0, oy=0, dragging=false;
+  handle.addEventListener('mousedown', (e)=>{
+    if(e.target.classList.contains('winbtn')) return;
+    if(win.classList.contains('maxed')) return;
+    dragging=true;
+    ox = e.clientX - win.offsetLeft; oy = e.clientY - win.offsetTop;
+    document.body.style.userSelect='none';
+  });
+  window.addEventListener('mousemove', (e)=>{
+    if(!dragging) return;
+    win.style.left = Math.max(0, e.clientX-ox)+'px';
+    win.style.top = Math.max(0, e.clientY-oy)+'px';
+  });
+  window.addEventListener('mouseup', ()=>{ dragging=false; document.body.style.userSelect=''; });
+}
+
+/* ===================== GAME HELPERS ===================== */
+function makeCanvasApp(body, w, h){
+  const wrap = document.createElement('div'); wrap.className='gamewrap';
+  const hud = document.createElement('div'); hud.className='hud';
+  const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+  const btnrow = document.createElement('div'); btnrow.className='btnrow';
+  const hint = document.createElement('div'); hint.className='hint';
+  wrap.append(hud, cv, btnrow, hint);
+  body.appendChild(wrap);
+  return {wrap, hud, cv, ctx:cv.getContext('2d'), btnrow, hint};
+}
+function mkBtn(row, label, fn){
+  const b=document.createElement('button'); b.className='gbtn'; b.textContent=label; b.onclick=fn; row.appendChild(b); return b;
+}
+
+/* ===================== 1. SNAKE ===================== */
+function initSnake(body){
+  const {hud, cv, ctx, btnrow, hint} = makeCanvasApp(body, 400, 400);
+  const cell=20, cols=20, rows=20;
+  let snake, dir, food, score, alive, loopId, speed=120, lastTime=0;
+  const scoreEl = document.createElement('span'); hud.appendChild(scoreEl);
+  hint.textContent = 'Arrow keys / WASD to move';
+
+  function reset(){
+    snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+    dir={x:1,y:0}; score=0; alive=true;
+    placeFood();
+  }
+  function placeFood(){
+    food = {x:(Math.random()*cols)|0, y:(Math.random()*rows)|0};
+  }
+  function step(){
+    const head={x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+    if(head.x<0||head.y<0||head.x>=cols||head.y>=rows||snake.some(s=>s.x===head.x&&s.y===head.y)){
+      alive=false; return;
+    }
+    snake.unshift(head);
+    if(head.x===food.x && head.y===food.y){ score++; placeFood(); }
+    else snake.pop();
+  }
+  function draw(){
+    ctx.fillStyle='#0a0a18'; ctx.fillRect(0,0,400,400);
+    ctx.fillStyle='#ff5c7c'; ctx.fillRect(food.x*cell, food.y*cell, cell-2, cell-2);
+    snake.forEach((s,i)=>{ ctx.fillStyle= i===0?'#39ff9c':'#2fbf7f'; ctx.fillRect(s.x*cell, s.y*cell, cell-2, cell-2); });
+    scoreEl.textContent = 'Score: '+score;
+    if(!alive){ ctx.fillStyle='#000a'; ctx.fillRect(0,0,400,400); ctx.fillStyle='#fff'; ctx.font='20px sans-serif'; ctx.textAlign='center'; ctx.fillText('Game Over', 200,190); ctx.font='13px sans-serif'; ctx.fillText('Click Restart', 200,215); }
+  }
+  function loop(t){
+    if(!lastTime) lastTime=t;
+    if(alive && t-lastTime>speed){ step(); lastTime=t; }
+    draw();
+    loopId = requestAnimationFrame(loop);
+  }
+  function key(e){
+    const k=e.key;
+    if((k==='ArrowUp'||k==='w')&&dir.y===0) dir={x:0,y:-1};
+    else if((k==='ArrowDown'||k==='s')&&dir.y===0) dir={x:0,y:1};
+    else if((k==='ArrowLeft'||k==='a')&&dir.x===0) dir={x:-1,y:0};
+    else if((k==='ArrowRight'||k==='d')&&dir.x===0) dir={x:1,y:0};
+  }
+  window.addEventListener('keydown', key);
+  mkBtn(btnrow,'Restart', ()=>{reset();});
+  reset(); loopId=requestAnimationFrame(loop);
+  return ()=>{ cancelAnimationFrame(loopId); window.removeEventListener('keydown', key); };
+}
+
+/* ===================== 2. PONG ===================== */
+function initPong(body){
+  const {hud, cv, ctx, btnrow, hint} = makeCanvasApp(body, 440, 320);
+  hint.textContent = 'Mouse or W/S to move your paddle';
+  const scoreEl=document.createElement('span'); hud.appendChild(scoreEl);
+  let py=140, ay=140, bx=220, by=160, bvx=4, bvy=3, ps=0, as=0, loopId;
+  const H=320, W=440, PH=60;
+  cv.addEventListener('mousemove', e=>{
+    const r=cv.getBoundingClientRect();
+    py = Math.min(H-PH, Math.max(0,(e.clientY-r.top)-PH/2));
+  });
+  const keys={};
+  const kd=e=>keys[e.key]=true, ku=e=>keys[e.key]=false;
+  window.addEventListener('keydown',kd); window.addEventListener('keyup',ku);
+  function step(){
+    if(keys['w']) py=Math.max(0,py-6);
+    if(keys['s']) py=Math.min(H-PH,py+6);
+    bx+=bvx; by+=bvy;
+    if(by<0||by>H-10) bvy*=-1;
+    if(bx<20 && by+10>py && by<py+PH){ bvx*=-1.05; bx=20; }
+    if(bx>W-30 && by+10>ay && by<ay+PH){ bvx*=-1.05; bx=W-30; }
+    if(bx<0){ as++; bx=W/2; by=H/2; bvx=4; }
+    if(bx>W){ ps++; bx=W/2; by=H/2; bvx=-4; }
+    const target = by-PH/2; ay += (target-ay)*0.06;
+    ay = Math.min(H-PH, Math.max(0, ay));
+  }
+  function draw(){
+    ctx.fillStyle='#0a0a18'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#39ff9c'; ctx.fillRect(10,py,10,PH);
+    ctx.fillStyle='#7c5cff'; ctx.fillRect(W-20,ay,10,PH);
+    ctx.fillStyle='#fff'; ctx.fillRect(bx,by,10,10);
+    scoreEl.textContent = `You ${ps} — CPU ${as}`;
+  }
+  function loop(){ step(); draw(); loopId=requestAnimationFrame(loop); }
+  loopId=requestAnimationFrame(loop);
+  return ()=>{ cancelAnimationFrame(loopId); window.removeEventListener('keydown',kd); window.removeEventListener('keyup',ku); };
+}
+
+/* ===================== 3. BREAKOUT ===================== */
+function initBreakout(body){
+  const {hud, cv, ctx, btnrow, hint} = makeCanvasApp(body, 400, 420);
+  hint.textContent = 'Mouse / Arrow keys to move paddle';
+  const scoreEl=document.createElement('span'); hud.appendChild(scoreEl);
+  const W=400,H=420,PW=70,PH=10;
+  let px=165, bx=200, by=300, bvx=3, bvy=-3, score=0, alive=true, loopId, bricks=[];
+  function resetBricks(){
+    bricks=[];
+    for(let r=0;r<5;r++) for(let c=0;c<8;c++)
+      bricks.push({x:c*48+8, y:r*20+30, w:44, h:14, alive:true, color:`hsl(${r*45+150},80%,60%)`});
+  }
+  function reset(){ px=165; bx=200; by=300; bvx=3; bvy=-3; score=0; alive=true; resetBricks(); }
+  cv.addEventListener('mousemove', e=>{
+    const r=cv.getBoundingClientRect(); px=Math.min(W-PW, Math.max(0, e.clientX-r.left-PW/2));
+  });
+  const keys={}; const kd=e=>keys[e.key]=true, ku=e=>keys[e.key]=false;
+  window.addEventListener('keydown',kd); window.addEventListener('keyup',ku);
+  function step(){
+    if(!alive) return;
+    if(keys['ArrowLeft']) px=Math.max(0,px-6);
+    if(keys['ArrowRight']) px=Math.min(W-PW,px+6);
+    bx+=bvx; by+=bvy;
+    if(bx<0||bx>W-8) bvx*=-1;
+    if(by<0) bvy*=-1;
+    if(by>H-20 && bx+8>px && bx<px+PW) bvy=-Math.abs(bvy);
+    if(by>H) { alive=false; }
+    bricks.forEach(b=>{
+      if(b.alive && bx+8>b.x && bx<b.x+b.w && by+8>b.y && by<b.y+b.h){
+        b.alive=false; bvy*=-1; score+=10;
+      }
+    });
+    if(bricks.every(b=>!b.alive)) alive=false;
+  }
+  function draw(){
+    ctx.fillStyle='#0a0a18'; ctx.fillRect(0,0,W,H);
+    bricks.forEach(b=>{ if(b.alive){ ctx.fillStyle=b.color; ctx.fillRect(b.x,b.y,b.w,b.h); }});
+    ctx.fillStyle='#39ff9c'; ctx.fillRect(px,H-20,PW,PH);
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(bx,by,6,0,7); ctx.fill();
+    scoreEl.textContent='Score: '+score;
+    if(!alive){ ctx.fillStyle='#000a'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='18px sans-serif'; ctx.fillText(bricks.every(b=>!b.alive)?'You Win!':'Game Over', W/2,H/2); }
+  }
+  function loop(){ step(); draw(); loopId=requestAnimationFrame(loop); }
+  mkBtn(btnrow,'Restart', reset);
+  reset(); loopId=requestAnimationFrame(loop);
+  return ()=>{ cancelAnimationFrame(loopId); window.removeEventListener('keydown',kd); window.removeEventListener('keyup',ku); };
+}
+
+/* ===================== 4. TETRIS ===================== */
+function initTetris(body){
+  const {hud, cv, ctx, btnrow, hint} = makeCanvasApp(body, 240, 440);
+  hint.textContent = 'Arrows: move/rotate, Down: drop';
+  const scoreEl=document.createElement('span'); hud.appendChild(scoreEl);
+  const cols=8, rows=17, cell=30;
+  const SHAPES = [
+    [[1,1,1,1]], [[1,1],[1,1]], [[0,1,0],[1,1,1]],
+    [[1,0,0],[1,1,1]], [[0,0,1],[1,1,1]], [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]]
+  ];
+  const COLORS = ['#39ff9c','#7c5cff','#ff5c7c','#ffcc4d','#4dd0ff','#ff8fd8','#a3ff4d'];
+  let grid, cur, curColor, cx, cy, score, alive, loopId, dropT=0, interval=600;
+  function newPiece(){
+    const i=(Math.random()*SHAPES.length)|0;
+    cur = SHAPES[i].map(r=>r.slice()); curColor=COLORS[i];
+    cx = (cols>>1) - (cur[0].length>>1); cy=0;
+    if(collide(cx,cy,cur)) alive=false;
+  }
+  function reset(){ grid=Array.from({length:rows},()=>Array(cols).fill(0)); score=0; alive=true; interval=600; newPiece(); }
+  function collide(nx,ny,shape){
+    for(let r=0;r<shape.length;r++) for(let c=0;c<shape[r].length;c++){
+      if(!shape[r][c]) continue;
+      const gx=nx+c, gy=ny+r;
+      if(gx<0||gx>=cols||gy>=rows) return true;
+      if(gy>=0 && grid[gy][gx]) return true;
+    }
+    return false;
+  }
+  function merge(){
+    cur.forEach((row,r)=>row.forEach((v,c)=>{ if(v) grid[cy+r][cx+c]=curColor; }));
+  }
+  function clearLines(){
+    let cleared=0;
+    grid = grid.filter(row=>{ if(row.every(v=>v)){ cleared++; return false;} return true; });
+    while(grid.length<rows) grid.unshift(Array(cols).fill(0));
+    if(cleared){ score+=cleared*100; interval=Math.max(150, interval-20); }
+  }
+  function rotate(){
+    const nr = cur[0].map((_,i)=>cur.map(row=>row[i]).reverse());
+    if(!collide(cx,cy,nr)) cur=nr;
+  }
+  function step(){
+    if(!collide(cx,cy+1,cur)) cy++;
+    else { merge(); clearLines(); newPiece(); }
+  }
+  function draw(){
+    ctx.fillStyle='#0a0a18'; ctx.fillRect(0,0,cols*cell,rows*cell);
+    grid.forEach((row,r)=>row.forEach((v,c)=>{ if(v){ ctx.fillStyle=v; ctx.fillRect(c*cell,r*cell,cell-1,cell-1); }}));
+    if(alive) cur.forEach((row,r)=>row.forEach((v,c)=>{ if(v){ ctx.fillStyle=curColor; ctx.fillRect((cx+c)*cell,(cy+r)*cell,cell-1,cell-1); }}));
+    scoreEl.textContent='Score: '+score;
+    if(!alive){ ctx.fillStyle='#000a'; ctx.fillRect(0,0,cols*cell,rows*cell); ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='16px sans-serif'; ctx.fillText('Game Over', cols*cell/2, rows*cell/2); }
+  }
+  function loop(t){
+    if(alive && t-dropT>interval){ step(); dropT=t; }
+    draw(); loopId=requestAnimationFrame(loop);
+  }
+  function key(e){
+    if(!alive) return;
+    if(e.key==='ArrowLeft' && !collide(cx-1,cy,cur)) cx--;
+    else if(e.key==='ArrowRight' && !collide(cx+1,cy,cur)) cx++;
+    else if(e.key==='ArrowDown') step();
+    else if(e.key==='ArrowUp') rotate();
+  }
+  window.addEventListener('keydown', key);
+  mkBtn(btnrow,'Restart', reset);
+  reset(); loopId=requestAnimationFrame(loop);
+  return ()=>{ cancelAnimationFrame(loopId); window.removeEventListener('keydown', key); };
+}
+
+/* ===================== 5. FLAPPY BIRD ===================== */
+function initFlappy(body){
+  const {hud, cv, ctx, btnrow, hint} = makeCanvasApp(body, 320, 440);
+  hint.textContent = 'Click / Space to flap';
+  const scoreEl=document.createElement('span'); hud.appendChild(scoreEl);
+  const W=320,H=440;
+  let by, bv, pipes, score, alive, loopId, frame;
+  function reset(){ by=200; bv=0; pipes=[{x:W, gap:150, gy:120}]; score=0; alive=true; frame=0; }
+  function flap(){ if(alive) bv=-6; else reset(); }
+  document.addEventListener('keydown', e=>{ if(e.code==='Space') flap(); });
+  cv.addEventListener('mousedown', flap);
+  function step(){
+    if(!alive) return;
+    frame++;
+    bv+=0.35; by+=bv;
+    if(frame%90===0) pipes.push({x:W, gap:130, gy:60+Math.random()*220});
+    pipes.forEach(p=>p.x-=2.6);
+    if(pipes[0] && pipes[0].x<-40) { pipes.shift(); score++; }
+    pipes.forEach(p=>{
+      if(40+14>p.x && 40-14<p.x+40){
+        if(by-12<p.gy-p.gap/2 || by+12>p.gy+p.gap/2) alive=false;
+      }
+    });
+    if(by>H-12||by<0) alive=false;
+  }
+  function draw(){
+    ctx.fillStyle='#0a0a18'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#2fbf7f';
+    pipes.forEach(p=>{
+      ctx.fillRect(p.x,0,40,p.gy-p.gap/2);
+      ctx.fillRect(p.x,p.gy+p.gap/2,40,H-(p.gy+p.gap/2));
+    });
+    ctx.fillStyle='#ffcc4d'; ctx.beginPath(); ctx.arc(40,by,12,0,7); ctx.fill();
+    scoreEl.textContent='Score: '+score;
+    if(!alive){ ctx.fillStyle='#000a'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='16px sans-serif'; ctx.fillText('Game Over — click to restart', W/2,H/2); }
+  }
+  function loop(){ step(); draw(); loopId=requestAnimationFrame(loop); }
+  reset(); loopId=requestAnimationFrame(loop);
+  return ()=>{ cancelAnimationFrame(loopId); cv.removeEventListener('mousedown', flap); };
+}
+
+/* ===================== 6. 2048 ===================== */
+function init2048(body){
+  const {hud, cv, ctx, btnrow, hint} = makeCanvasApp(body, 340, 340);
+  hint.textContent = 'Arrow keys to slide tiles';
+  const scoreEl=document.createElement('span'); hud.appendChild(scoreEl);
+  const n=4, cell=80, gap=8;
+  let grid, score;
+  const COLORS={2:'#3a3564',4:'#43407a',8:'#7c5cff',16:'#9b6bff',32:'#ff8fd8',64:'#ff5c7c',128:'#ffcc4d',256:'#4dd0ff',512:'#39ff9c',1024:'#fff',2048:'#ffd700'};
+  function reset(){ grid=Array.from({length:n},()=>Array(n).fill(0)); score=0; addTile(); addTile(); }
+  function addTile(){
+    const empty=[]; grid.forEach((row,r)=>row.forEach((v,c)=>{ if(!v) empty.push([r,c]); }));
+    if(!empty.length) return;
+    const [r,c]=empty[(Math.random()*empty.length)|0];
+    grid[r][c]=Math.random()<0.9?2:4;
+  }
+  function slideRow(row){
+    let arr=row.filter(v=>v);
+    for(let i=0;i<arr.length-1;i++){ if(arr[i]===arr[i+1]){ arr[i]*=2; score+=arr[i]; arr.splice(i+1,1);} }
+    while(arr.length<n) arr.push(0);
+    return arr;
+  }
+  function move(dir){
+    let moved=false;
+    const before=JSON.stringify(grid);
+    if(dir==='left'){ grid=grid.map(slideRow); }
+    if(dir==='right'){ grid=grid.map(r=>slideRow(r.slice().reverse()).reverse()); }
+    if(dir==='up'){ for(let c=0;c<n;c++){ let col=grid.map(r=>r[c]); col=slideRow(col); for(let r=0;r<n;r++) grid[r][c]=col[r]; } }
+    if(dir==='down'){ for(let c=0;c<n;c++){ let col=grid.map(r=>r[c]).reverse(); col=slideRow(col).reverse(); for(let r=0;r<n;r++) grid[r][c]=col[r]; } }
+    moved = JSON.stringify(grid)!==before;
+    if(moved) addTile();
+    draw();
+  }
+  function draw(){
+    ctx.fillStyle='#0a0a18'; ctx.fillRect(0,0,340,340);
+    grid.forEach((row,r)=>row.forEach((v,c)=>{
+      const x=c*(cell+gap)+gap, y=r*(cell+gap)+gap;
+      ctx.fillStyle = v? (COLORS[v]||'#ff00ff') : '#1c1a36';
+      ctx.fillRect(x,y,cell,cell);
+      if(v){ ctx.fillStyle= v>4?'#1a1830':'#fff'; ctx.font='bold 22px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(v,x+cell/2,y+cell/2); }
+    }));
+    scoreEl.textContent='Score: '+score;
+  }
+  function key(e){
+    const map={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
+    if(map[e.key]){ e.preventDefault(); move(map[e.key]); }
+  }
+  window.addEventListener('keydown', key);
+  mkBtn(btnrow,'Restart', reset);
+  reset(); draw();
+  return ()=>{ window.removeEventListener('keydown', key); };
+}
+
+/* ===================== 7. MEMORY MATCH ===================== */
+function initMemory(body){
+  const {hud, cv, ctx, btnrow, hint} = makeCanvasApp(body, 400, 400);
+  hint.textContent = 'Click cards to find matching pairs';
+  const scoreEl=document.createElement('span'); hud.appendChild(scoreEl);
+  const emojis=['🐍','🦆','🐤','🎮','🏓','🧱','🟦','🔢'];
+  const cols=4, rows=4, cw=96, ch=96, gap=6;
+  let cards, first, second, lock, moves;
+  function reset(){
+    const deck=[...emojis,...emojis];
+    for(let i=deck.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [deck[i],deck[j]]=[deck[j],deck[i]]; }
+    cards = deck.map((e,i)=>({e, flipped:false, matched:false, x:(i%cols)*(cw+gap)+8, y:((i/cols)|0)*(ch+gap)+8}));
+    first=null; second=null; lock=false; moves=0;
+    draw();
+  }
+  function draw(){
+    ctx.fillStyle='#0a0a18'; ctx.fillRect(0,0,400,400);
+    cards.forEach(c=>{
+      ctx.fillStyle = c.matched? '#2fbf7f55' : (c.flipped? '#7c5cff':'#252150');
+      ctx.fillRect(c.x,c.y,cw,ch);
+      if(c.flipped||c.matched){ ctx.font='40px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(c.e, c.x+cw/2, c.y+ch/2); }
+    });
+    scoreEl.textContent='Moves: '+moves;
+  }
+  cv.addEventListener('click', e=>{
+    if(lock) return;
+    const r=cv.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const c=cards.find(c=>!c.matched && !c.flipped && mx>c.x && mx<c.x+cw && my>c.y && my<c.y+ch);
+    if(!c) return;
+    c.flipped=true; draw();
+    if(!first){ first=c; }
+    else if(c!==first){
+      second=c; moves++; lock=true;
+      setTimeout(()=>{
+        if(first.e===second.e){ first.matched=true; second.matched=true; }
+        else { first.flipped=false; second.flipped=false; }
+        first=null; second=null; lock=false; draw();
+      }, 500);
+    }
+  });
+  mkBtn(btnrow,'Restart', reset);
+  reset();
+  return ()=>{};
+}
+
+/* ===================== CUSTOM GAME LOADER ===================== */
+function initCustomGame(body, id){
+  const g = customGames.find(c=>c.id===id);
+  body.style.padding='0';
+  if(!g){ body.innerHTML = '<div class="hint" style="padding:20px">Game not found.</div>'; return ()=>{}; }
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText='flex:1;border:none;width:100%;height:100%;background:#fff;';
+  iframe.setAttribute('sandbox','allow-scripts allow-same-origin allow-pointer-lock');
+  iframe.srcdoc = g.html;
+  body.appendChild(iframe);
+  return ()=>{};
+}
+
+/* ===================== PLAY STORE ===================== */
+function initStore(body){
+  const wrap = document.createElement('div'); wrap.id='storeWrap';
+  wrap.innerHTML = `
+    <div class="storeTabs">
+      <button class="storeTab active" data-tab="games">Games</button>
+      <button class="storeTab" data-tab="community">Community</button>
+      <button class="storeTab" data-tab="publish">Publish</button>
+    </div>
+    <div class="storeNote" id="storeNoteText"></div>
+    <div class="storeList" id="storeList"></div>
+    <div class="publishForm" id="publishForm" style="display:none">
+      <h4>Publish a game</h4>
+      <input type="text" id="pubName" placeholder="Game name">
+      <input type="text" id="pubAuthor" placeholder="Your name">
+      <input type="file" id="pubFile" accept=".html,.htm">
+      <button class="gbtn" id="pubBtn">Publish to Play Store</button>
+      <div class="storeNote">Saved only in this browser — publishing here does not upload it anywhere or share it with other people.</div>
+    </div>
+  `;
+  body.appendChild(wrap);
+  const list = wrap.querySelector('#storeList');
+  const note = wrap.querySelector('#storeNoteText');
+  const pubForm = wrap.querySelector('#publishForm');
+  let tab = 'games';
+
+  function renderCard(cfg, opts){
+    const card = document.createElement('div'); card.className='storeCard';
+    const inst = isInstalled(cfg.id);
+    card.innerHTML = `
+      <div class="sIcon">${cfg.icon||'🎮'}</div>
+      <div class="sInfo">
+        <div class="sName">${cfg.name}</div>
+        <div class="sDesc">${opts.desc||''}</div>
+        ${opts.author?`<div class="sAuthor">by ${opts.author}</div>`:''}
+      </div>
+      <div class="sBtns"></div>
+    `;
+    const btns = card.querySelector('.sBtns');
+    if(inst){
+      const openB=document.createElement('button'); openB.className='sBtn open'; openB.textContent='Open';
+      openB.onclick=()=>openApp(cfg.id); btns.appendChild(openB);
+      const unB=document.createElement('button'); unB.className='sBtn uninstall'; unB.textContent='Uninstall';
+      unB.onclick=()=>setInstalled(cfg.id,false); btns.appendChild(unB);
+    } else {
+      const inB=document.createElement('button'); inB.className='sBtn install'; inB.textContent='Install';
+      inB.onclick=()=>{ setInstalled(cfg.id,true); render(); }; btns.appendChild(inB);
+    }
+    if(opts.removable){
+      const rmB=document.createElement('button'); rmB.className='sBtn remove'; rmB.textContent='Delete';
+      rmB.onclick=()=>{
+        if(isInstalled(cfg.id)) setInstalled(cfg.id,false);
+        customGames = customGames.filter(g=>g.id!==cfg.id);
+        saveCustom(customGames); render();
+      };
+      btns.appendChild(rmB);
+    }
+    return card;
+  }
+
+  function render(){
+    list.innerHTML=''; pubForm.style.display='none'; list.style.display='flex';
+    wrap.querySelectorAll('.storeTab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+    if(tab==='games'){
+      note.textContent = 'Built-in mini games. Install to add them to your desktop and Start menu.';
+      BUILTIN_GAMES.forEach(g=> list.appendChild(renderCard(g, {desc:g.desc})));
+    } else if(tab==='community'){
+      note.textContent = customGames.length
+        ? 'Games published from this browser.'
+        : 'No community games yet — publish one from the Publish tab.';
+      customGames.forEach(g=> list.appendChild(renderCard({id:g.id, name:g.name, icon:'🎮'}, {desc:'Community game', author:g.author, removable:true})));
+    } else if(tab==='publish'){
+      list.style.display='none';
+      pubForm.style.display='flex';
+      note.textContent = '';
+    }
+  }
+  wrap.querySelectorAll('.storeTab').forEach(b=> b.onclick=()=>{ tab=b.dataset.tab; render(); });
+
+  wrap.querySelector('#pubBtn').onclick = ()=>{
+    const name = wrap.querySelector('#pubName').value.trim();
+    const author = wrap.querySelector('#pubAuthor').value.trim();
+    const file = wrap.querySelector('#pubFile').files[0];
+    if(!name || !author || !file){ alert('Please fill in a game name, your name, and choose an HTML file.'); return; }
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const id = 'custom_' + Date.now();
+      customGames.push({id, name, author, html:reader.result, dateAdded:Date.now()});
+      saveCustom(customGames);
+      setInstalled(id, true);
+      wrap.querySelector('#pubName').value=''; wrap.querySelector('#pubAuthor').value=''; wrap.querySelector('#pubFile').value='';
+      tab='community'; render();
+      alert('Published! "'+name+'" has been installed to your desktop.');
+    };
+    reader.readAsText(file);
+  };
+
+  render();
+  return ()=>{};
+}
+
+/* ===================== REGISTRY ===================== */
+const GAME_INIT = {
+  store: initStore,
+  snake: initSnake,
+  pong: initPong,
+  breakout: initBreakout,
+  tetris: initTetris,
+  flappy: initFlappy,
+  g2048: init2048,
+  memory: initMemory,
+};
+
+/* Boot */
+renderDesktopAndStart();
+openApp('store');
+</script>
+</body>
+</html>
